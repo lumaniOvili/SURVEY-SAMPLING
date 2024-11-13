@@ -1,0 +1,85 @@
+---
+title: "survey Sampling 1 assignment 2"
+author: "Ifeakachukwu Ovili"
+date: "2024-11-01"
+output: word_document
+---
+```{r}
+# Load the SHS dataset
+data("SHS", package = "stratification")
+
+# Check the structure of the dataset
+str(SHS)
+```
+(a)
+````{r}
+# Create Stratum column based on Province
+SHS$Stratum <- SHS$PROVINCP  # Stratify based on PROVINCP
+str(SHS)
+```
+(b)
+```{r}
+# Load necessary packages
+library(stratification)
+library("sampling")
+
+# Load the SHS dataset
+data("SHS", package = "stratification")
+
+# Create a new column for strata based on Province
+SHS$Stratum <- SHS$PROVINCP
+
+# Compute the population stratum sizes
+Nh <- table(SHS$Stratum)
+
+# Define nh (sample sizes for each stratum)
+nh <- c(97, 133, 127, 150, 170, 141, 108, 150, 170, 80)
+
+# Ensure nh is a named vector matching the strata
+names(nh) <- unique(SHS$Stratum)
+
+# Draw sample using STSRSWOR directly from SHS
+set.seed(123)  # Set seed for reproducibility
+Sample.stsrswor <- strata(SHS, "Stratum", size = nh, method = "srswor")
+
+# Merge with the original SHS dataset to include M101
+Sample.stsrswor <- merge(Sample.stsrswor, SHS[, c("CASEID", "M101")], 
+                          by.x = "ID_unit", by.y = "CASEID", all.x = TRUE)
+
+# Rename the duplicated 'Stratum' column
+names(Sample.stsrswor)[which(duplicated(names(Sample.stsrswor)))] <- "Stratum_ID"
+
+# Check the sample structure
+str(Sample.stsrswor)
+
+# Remove rows with NA in M101
+Sample.stsrswor <- Sample.stsrswor[!is.na(Sample.stsrswor$M101), ]
+
+# Final structure
+str(Sample.stsrswor)
+
+
+```
+(c)
+```{r}
+# Estimate the population mean Y¯U
+Y_bar_U <- mean(Sample.stsrswor$M101, na.rm = TRUE)
+print(paste("Estimated Mean Expenditure: ", Y_bar_U))
+
+```
+(d)
+```{r}
+# Calculate the variance of M101 in each stratum using aggregate
+library(sampling) 
+
+s2_yh <- aggregate(M101 ~ Stratum_ID, data = Sample.stsrswor, FUNCTION= var, na.rm = TRUE)[, 2]
+
+# Ensure that Nh is defined (population size in each stratum)
+Nh <- table(SHS$PROVINCP)
+
+# Calculate the variance of the estimator of ȲU
+var_y_hat <- sum(Nh^2 * (1 - nh / Nh) * s2_yh / nh, na.rm = TRUE)
+
+# Print the variance estimate
+print(var_y_hat)
+```
